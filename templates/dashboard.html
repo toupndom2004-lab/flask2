@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Dashboard</h2>
+
+{% if total_inspections is defined %}
+  <div class="row mb-4">
+    <div class="col-sm-4">
+      <div class="card text-bg-primary">
+        <div class="card-body">
+          <h5 class="card-title">Total Inspections</h5>
+          <p class="card-text display-6">{{ total_inspections }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="card text-bg-danger">
+        <div class="card-body">
+          <h5 class="card-title">NG Results</h5>
+          <p class="card-text display-6">{{ ng_count }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="card text-bg-success">
+        <div class="card-body">
+          <h5 class="card-title">Recent Inspections</h5>
+          <p class="card-text display-6">{{ recent|length }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Recent Inspections</h5>
+  </div>
+  <div class="card-body">
+    {% if recent %}
+      <div class="list-group">
+        {% for row in recent %}
+          <a href="{{ url_for('uploaded_file', filename=row.image_path) }}" target="_blank" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+              <h6 class="mb-1">{{ row.product_code }} / {{ row.lot_number }}</h6>
+              <small>{{ row.inspection_time }}</small>
+            </div>
+            <p class="mb-1">
+              <strong>{{ row.result }}</strong> • Confidence {{ row.ai_confidence }}%
+            </p>
+            <small class="text-muted">Inspector: {{ row.inspector_name }}</small>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>No inspections yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

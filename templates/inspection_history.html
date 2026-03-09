@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Inspection History</h2>
+
+{% if inspections %}
+  <div class="table-responsive">
+    <table class="table table-striped table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th>Lot</th>
+          <th>Inspector</th>
+          <th>Date</th>
+          <th>Result</th>
+          <th>Confidence</th>
+          <th>Notes</th>
+          <th>Images</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in inspections %}
+          <tr>
+            <td>{{ row.inspection_id }}</td>
+            <td>{{ row.product_code }}</td>
+            <td>{{ row.lot_number }}</td>
+            <td>{{ row.inspector_name }}</td>
+            <td>{{ row.inspection_time }}</td>
+            <td>
+              {% if row.result == 'OK' %}
+                <span class="badge bg-success">OK</span>
+              {% else %}
+                <span class="badge bg-danger">NG</span>
+              {% endif %}
+            </td>
+            <td>{{ row.ai_confidence }}%</td>
+            <td>{{ row.notes }}</td>
+            <td>
+              <div class="d-flex gap-2 flex-wrap">
+                <div class="text-center">
+                  <div class="small text-muted">Original</div>
+                  <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#imageModal" data-bs-img-url="{{ url_for('uploaded_file', filename=row.image_path) }}" data-bs-img-title="Original">
+                    <img src="{{ url_for('uploaded_file', filename=row.image_path) }}" alt="Original" class="img-thumbnail" style="max-width: 120px;">
+                  </button>
+                </div>
+                {% if row.annotated_image_path %}
+                  <div class="text-center">
+                    <div class="small text-muted">Annotated</div>
+                    <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#imageModal" data-bs-img-url="{{ url_for('uploaded_file', filename=row.annotated_image_path) }}" data-bs-img-title="Annotated">
+                      <img src="{{ url_for('uploaded_file', filename=row.annotated_image_path) }}" alt="Annotated" class="img-thumbnail" style="max-width: 120px;">
+                    </button>
+                  </div>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p>No inspections have been run yet. Start by uploading an image on the <a href="{{ url_for('inspection') }}">Inspection</a> page.</p>
+{% endif %}
+
+<!-- Modal for viewing images in larger size -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="imageModalLabel">Image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="imageModalImg" src="" class="img-fluid" alt="Inspection image">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const imageModal = document.getElementById('imageModal');
+  if (imageModal) {
+    imageModal.addEventListener('show.bs.modal', function (event) {
+      const button = event.relatedTarget;
+      const imgUrl = button.getAttribute('data-bs-img-url');
+      const imgTitle = button.getAttribute('data-bs-img-title');
+
+      const modalImg = document.getElementById('imageModalImg');
+      const modalTitle = document.getElementById('imageModalLabel');
+
+      if (modalImg) modalImg.src = imgUrl;
+      if (modalTitle) modalTitle.textContent = imgTitle;
+    });
+  }
+</script>
+
+{% endblock %}

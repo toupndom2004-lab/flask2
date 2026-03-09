@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Upload Weld Image</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="product_code" class="form-label">Product Code</label>
+            <input
+              class="form-control"
+              type="text"
+              id="product_code"
+              name="product_code"
+              placeholder="e.g., PROD-1001"
+              required
+            >
+          </div>
+          <div class="mb-3">
+            <label for="lot_number" class="form-label">Lot Number</label>
+            <input
+              class="form-control"
+              type="text"
+              id="lot_number"
+              name="lot_number"
+              placeholder="e.g., LOT-2026-03"
+              required
+            >
+          </div>
+          <div class="mb-3">
+            <label for="image" class="form-label">Select an image (jpg, png, gif)</label>
+            <input class="form-control" type="file" id="image" name="image" accept="image/*" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Run Inspection</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">How It Works</h5>
+      </div>
+      <div class="card-body">
+        <p>This demo shows a simplified Industry 4.0 workflow:</p>
+        <ul>
+          <li>Enter a product code and production lot number.</li>
+          <li>Upload a weld image (stored for traceability).</li>
+          <li>The system stores an AI inspection result with a confidence score.</li>
+          <li>Review inspection history and dashboard statistics.</li>
+        </ul>
+        <p>The inspection logic is a placeholder; replace it with your own AI/ML model.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

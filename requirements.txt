@@ -1,0 +1,7 @@
+Flask>=2.3
+Werkzeug>=2.3
+pandas>=2.0
+torch>=2.0
+ultralytics>=8.0
+Pillow>=10.0
+gunicorn>=20.1

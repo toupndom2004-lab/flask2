@@ -1,0 +1,109 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<h2 class="mb-4">Inspection Form</h2>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">Enter Inspection Details</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="product_code" class="form-label">รหัสสินค้า (product_code)</label>
+            <input class="form-control" id="product_code" name="product_code" placeholder="e.g. PROD-1001" required>
+          </div>
+          <div class="mb-3">
+            <label for="lot_number" class="form-label">ล็อตการผลิต (lot_number)</label>
+            <input class="form-control" id="lot_number" name="lot_number" placeholder="e.g. LOT-2026-03" required>
+          </div>
+          <div class="mb-3">
+            <label for="inspector_name" class="form-label">ชื่อผู้ตรวจสอบ (inspector_name)</label>
+            <input class="form-control" id="inspector_name" name="inspector_name" placeholder="e.g. Somchai" required>
+          </div>
+          <div class="mb-3">
+            <label for="notes" class="form-label">หมายเหตุ (notes)</label>
+            <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Optional notes"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="image" class="form-label">อัปโหลดภาพงานเชื่อม</label>
+            <input class="form-control" type="file" id="image" name="image" accept="image/*" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary">บันทึกผลการตรวจสอบ</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    {% if result is defined and result %}
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0">ผลการวิเคราะห์จาก AI</h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-2"><strong>Result:</strong> <span class="badge bg-{{ 'success' if result == 'OK' else 'danger' }}">{{ result }}</span></p>
+          <p class="mb-2"><strong>Confidence:</strong> {{ confidence }}%</p>
+
+          {% if detections %}
+            <h6 class="mt-3">Detections</h6>
+            <ul class="list-unstyled">
+              {% for d in detections %}
+                <li>
+                  <strong>{{ d.class }}</strong> ({{ d.confidence }}%)
+                  <br>
+                  bbox: [{{ d.bbox[0] | round(0) }}, {{ d.bbox[1] | round(0) }}, {{ d.bbox[2] | round(0) }}, {{ d.bbox[3] | round(0) }}]
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-muted">ไม่พบชิ้นงานที่น่าสงสัย (ไม่มีการตรวจจับ)</p>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if preview_image or original_image %}
+        <div class="row">
+          {% if original_image %}
+            <div class="col-md-6 mb-4">
+              <div class="card h-100">
+                <div class="card-header">
+                  <h5 class="card-title mb-0">Original image</h5>
+                </div>
+                <div class="card-body text-center">
+                  <img src="{{ url_for('uploaded_file', filename=original_image) }}" class="img-fluid" alt="Original upload">
+                </div>
+              </div>
+            </div>
+          {% endif %}
+
+          {% if preview_image %}
+            <div class="col-md-6 mb-4">
+              <div class="card h-100">
+                <div class="card-header">
+                  <h5 class="card-title mb-0">Annotated image (boxes + labels)</h5>
+                </div>
+                <div class="card-body text-center">
+                  <img src="{{ url_for('uploaded_file', filename=preview_image) }}" class="img-fluid" alt="Annotated inspection image">
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="card-title mb-0">คำแนะนำ</h5>
+      </div>
+      <div class="card-body">
+        <p>ระบบจะบันทึกผลการตรวจสอบพร้อมภาพและรายละเอียดในฐานข้อมูล เมื่อกดปุ่มบันทึกแล้วจะสามารถดูย้อนหลังได้ที่หน้าประวัติการตรวจสอบ</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
