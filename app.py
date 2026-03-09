@@ -287,7 +287,7 @@ def _migrate_inspections_table(db: sqlite3.Connection) -> None:
 
 WEIGHTS_PATH = os.environ.get(
     "WEIGHTS_PATH",
-    r"C:\workspace\project\train9\weights\best.pt",
+    "train9/weights/best.pt"
 )
 _model = None
 
