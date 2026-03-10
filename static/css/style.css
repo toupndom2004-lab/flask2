@@ -1,0 +1,347 @@
+/* Industrial Welding Inspection System - Custom CSS */
+
+:root {
+  --primary-color: #1f6feb;
+  --success-color: #2da44e;
+  --danger-color: #d1242f;
+  --warning-color: #f2cc60;
+  --dark-bg: #1a1a1a;
+  --light-bg: #f8f9fa;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--light-bg);
+  padding-top: 80px;
+}
+
+.main-content {
+  min-height: calc(100vh - 80px);
+  padding-top: 2rem;
+}
+
+/* Modern Navigation */
+.navbar-brand {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.navbar-nav .nav-link {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  margin: 0 0.25rem;
+  transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-nav .nav-link.active {
+  background-color: var(--primary-color);
+  color: white !important;
+}
+
+/* KPI Cards */
+.kpi-card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  overflow: hidden;
+}
+
+.kpi-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.kpi-card .card-body {
+  padding: 1.5rem;
+}
+
+.kpi-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.kpi-icon.primary {
+  background-color: var(--primary-color);
+}
+
+.kpi-icon.success {
+  background-color: var(--success-color);
+}
+
+.kpi-icon.danger {
+  background-color: var(--danger-color);
+}
+
+.kpi-icon.warning {
+  background-color: var(--warning-color);
+}
+
+.kpi-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Modern Cards */
+.modern-card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  transition: transform 0.2s ease-in-out;
+}
+
+.modern-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.modern-card .card-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #dee2e6;
+  border-radius: 1rem 1rem 0 0 !important;
+  padding: 1rem 1.5rem;
+}
+
+.modern-card .card-body {
+  padding: 1.5rem;
+}
+
+/* Alert Cards */
+.alert-card {
+  border-left: 4px solid var(--danger-color);
+  background-color: #fff5f5;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.alert-card:hover {
+  background-color: #fee;
+  transform: translateX(5px);
+}
+
+.alert-icon {
+  color: var(--danger-color);
+  font-size: 1.25rem;
+  margin-right: 0.75rem;
+}
+
+/* Chart Containers */
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+/* Badges */
+.badge-ok {
+  background-color: var(--success-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-weight: 600;
+}
+
+.badge-ng {
+  background-color: var(--danger-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-weight: 600;
+}
+
+/* Modern Table */
+.modern-table {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.modern-table thead {
+  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  color: white;
+}
+
+.modern-table thead th {
+  border: none;
+  padding: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+.modern-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.modern-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.modern-table tbody td {
+  padding: 1rem;
+  vertical-align: middle;
+  border-top: 1px solid #dee2e6;
+}
+
+/* Image Thumbnails */
+.thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.thumbnail:hover {
+  transform: scale(1.1);
+}
+
+/* Upload Area */
+.upload-area {
+  border: 2px dashed #dee2e6;
+  border-radius: 1rem;
+  padding: 3rem 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  background-color: #f8f9fa;
+}
+
+.upload-area:hover {
+  border-color: var(--primary-color);
+  background-color: #e7f3ff;
+}
+
+.upload-area.dragover {
+  border-color: var(--primary-color);
+  background-color: #e7f3ff;
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+/* Result Cards */
+.result-card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.result-card.ok {
+  border-top: 4px solid var(--success-color);
+}
+
+.result-card.ng {
+  border-top: 4px solid var(--danger-color);
+}
+
+.result-value {
+  font-size: 3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.result-value.ok {
+  color: var(--success-color);
+}
+
+.result-value.ng {
+  color: var(--danger-color);
+}
+
+/* Buttons */
+.btn-modern {
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15);
+}
+
+/* Footer */
+footer {
+  margin-top: auto;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .kpi-value {
+    font-size: 2rem;
+  }
+  
+  .chart-container {
+    height: 250px;
+  }
+  
+  .modern-table {
+    font-size: 0.875rem;
+  }
+  
+  .thumbnail {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 576px) {
+  .main-content {
+    padding-top: 1rem;
+  }
+  
+  .kpi-card .card-body {
+    padding: 1rem;
+  }
+  
+  .kpi-value {
+    font-size: 1.75rem;
+  }
+  
+  .chart-container {
+    height: 200px;
+  }
+}

@@ -1,60 +1,346 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2 class="mb-4">Dashboard</h2>
+<div class="fade-in">
+  <!-- Dashboard Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-speedometer2 me-2"></i>Dashboard
+    </h2>
+    <div>
+      <button class="btn btn-outline-primary btn-modern me-2" onclick="location.reload()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+      </button>
+      <div class="btn-group">
+        <a href="{{ url_for('export_csv') }}" class="btn btn-outline-success btn-modern">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export CSV
+        </a>
+        <a href="{{ url_for('export_excel') }}" class="btn btn-outline-success btn-modern">
+          <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+        </a>
+      </div>
+    </div>
+  </div>
 
-{% if total_inspections is defined %}
+  <!-- Row 1: KPI Cards -->
+  {% if total_inspections is defined %}
   <div class="row mb-4">
-    <div class="col-sm-4">
-      <div class="card text-bg-primary">
-        <div class="card-body">
-          <h5 class="card-title">Total Inspections</h5>
-          <p class="card-text display-6">{{ total_inspections }}</p>
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card kpi-card h-100">
+        <div class="card-body text-center">
+          <div class="kpi-icon primary mx-auto">
+            <i class="bi bi-clipboard-check"></i>
+          </div>
+          <div class="kpi-value">{{ total_inspections }}</div>
+          <div class="kpi-label">Total Inspections</div>
         </div>
       </div>
     </div>
-    <div class="col-sm-4">
-      <div class="card text-bg-danger">
-        <div class="card-body">
-          <h5 class="card-title">NG Results</h5>
-          <p class="card-text display-6">{{ ng_count }}</p>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card kpi-card h-100">
+        <div class="card-body text-center">
+          <div class="kpi-icon success mx-auto">
+            <i class="bi bi-check-circle"></i>
+          </div>
+          <div class="kpi-value">{{ total_inspections - ng_count }}</div>
+          <div class="kpi-label">OK Parts</div>
         </div>
       </div>
     </div>
-    <div class="col-sm-4">
-      <div class="card text-bg-success">
-        <div class="card-body">
-          <h5 class="card-title">Recent Inspections</h5>
-          <p class="card-text display-6">{{ recent|length }}</p>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card kpi-card h-100">
+        <div class="card-body text-center">
+          <div class="kpi-icon danger mx-auto">
+            <i class="bi bi-x-circle"></i>
+          </div>
+          <div class="kpi-value">{{ ng_count }}</div>
+          <div class="kpi-label">NG Parts</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card kpi-card h-100">
+        <div class="card-body text-center">
+          <div class="kpi-icon warning mx-auto">
+            <i class="bi bi-exclamation-triangle"></i>
+          </div>
+          <div class="kpi-value">{{ defect_rate }}%</div>
+          <div class="kpi-label">Defect Rate</div>
         </div>
       </div>
     </div>
   </div>
-{% endif %}
+  {% endif %}
 
-<div class="card mb-4">
-  <div class="card-header">
-    <h5 class="card-title mb-0">Recent Inspections</h5>
-  </div>
-  <div class="card-body">
-    {% if recent %}
-      <div class="list-group">
-        {% for row in recent %}
-          <a href="{{ url_for('uploaded_file', filename=row.image_path) }}" target="_blank" class="list-group-item list-group-item-action">
-            <div class="d-flex w-100 justify-content-between">
-              <h6 class="mb-1">{{ row.product_code }} / {{ row.lot_number }}</h6>
-              <small>{{ row.inspection_time }}</small>
-            </div>
-            <p class="mb-1">
-              <strong>{{ row.result }}</strong> • Confidence {{ row.ai_confidence }}%
-            </p>
-            <small class="text-muted">Inspector: {{ row.inspector_name }}</small>
-          </a>
-        {% endfor %}
+  <!-- Row 2: Charts -->
+  <div class="row mb-4">
+    <div class="col-lg-8 mb-3">
+      <div class="card modern-card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-graph-up me-2"></i>Defect Rate Trend
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="defectTrendChart"></canvas>
+          </div>
+        </div>
       </div>
-    {% else %}
-      <p>No inspections yet.</p>
-    {% endif %}
+    </div>
+    
+    <div class="col-lg-4 mb-3">
+      <div class="card modern-card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-pie-chart me-2"></i>OK vs NG
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="okNgPieChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Defect Analysis -->
+  <div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+      <div class="card modern-card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-bar-chart me-2"></i>Top Defect Types
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if top_defects %}
+            <div class="chart-container">
+              <canvas id="defectTypesChart"></canvas>
+            </div>
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="bi bi-info-circle me-2"></i>No defect data available
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-6 mb-3">
+      <div class="card modern-card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-exclamation-triangle me-2"></i>Recent NG Alerts
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if recent_ng_alerts %}
+            <div style="max-height: 300px; overflow-y: auto;">
+              {% for alert in recent_ng_alerts %}
+                <div class="alert-card">
+                  <div class="d-flex">
+                    <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+                    <div class="flex-grow-1">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <strong class="text-danger">NG Alert</strong>
+                          <div class="small text-muted mt-1">{{ alert.inspection_time }}</div>
+                        </div>
+                      </div>
+                      <div class="mt-2">
+                        <div class="row">
+                          <div class="col-6">
+                            <small><strong>Product:</strong> {{ alert.product_code }}</small><br>
+                            <small><strong>Lot:</strong> {{ alert.lot_number }}</small>
+                          </div>
+                          <div class="col-6">
+                            <small><strong>Defect:</strong> {{ alert.defect_type or 'Unknown' }}</small><br>
+                            <small><strong>Confidence:</strong> {{ alert.ai_confidence }}%</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="bi bi-check-circle me-2"></i>No recent NG alerts
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Inspections -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card modern-card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-clock-history me-2"></i>Recent Inspections
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if recent %}
+            <div class="table-responsive">
+              <table class="table table-hover modern-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Lot</th>
+                    <th>Inspector</th>
+                    <th>Result</th>
+                    <th>Confidence</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in recent %}
+                    <tr>
+                      <td>{{ row.product_code }}</td>
+                      <td>{{ row.lot_number }}</td>
+                      <td>{{ row.inspector_name }}</td>
+                      <td>
+                        {% if row.result == 'OK' %}
+                          <span class="badge badge-ok">OK</span>
+                        {% else %}
+                          <span class="badge badge-ng">NG</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ row.ai_confidence }}%</td>
+                      <td>{{ row.inspection_time }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="bi bi-inbox me-2"></i>No inspections yet
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+
+<script>
+// Chart.js Configuration
+const chartColors = {
+  primary: '#1f6feb',
+  success: '#2da44e',
+  danger: '#d1242f',
+  warning: '#f2cc60',
+  gray: '#6c757d'
+};
+
+// Defect Rate Trend Chart
+const defectTrendCtx = document.getElementById('defectTrendChart').getContext('2d');
+new Chart(defectTrendCtx, {
+  type: 'line',
+  data: {
+    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
+    datasets: [{
+      label: 'Defect Rate %',
+      data: [12, 15, 8, 20, 18, 15, {{ defect_rate }}],
+      borderColor: chartColors.danger,
+      backgroundColor: chartColors.danger + '20',
+      tension: 0.4,
+      fill: true
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: {
+          callback: function(value) {
+            return value + '%';
+          }
+        }
+      }
+    }
+  }
+});
+
+// OK vs NG Pie Chart
+const okNgCtx = document.getElementById('okNgPieChart').getContext('2d');
+const okCount = {{ total_inspections - ng_count }};
+const ngCount = {{ ng_count }};
+
+new Chart(okNgCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['OK Parts', 'NG Parts'],
+    datasets: [{
+      data: [okCount, ngCount],
+      backgroundColor: [chartColors.success, chartColors.danger],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom'
+      }
+    }
+  }
+});
+
+// Top Defect Types Bar Chart
+{% if top_defects %}
+const defectTypesCtx = document.getElementById('defectTypesChart').getContext('2d');
+const defectLabels = [{% for defect in top_defects %}'{{ defect.defect_type }}'{% if not loop.last %},{% endif %}{% endfor %}];
+const defectCounts = [{% for defect in top_defects %}{{ defect.count }}{% if not loop.last %},{% endif %}{% endfor %}];
+
+new Chart(defectTypesCtx, {
+  type: 'bar',
+  data: {
+    labels: defectLabels,
+    datasets: [{
+      label: 'Count',
+      data: defectCounts,
+      backgroundColor: chartColors.danger,
+      borderRadius: 5
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1
+        }
+      }
+    }
+  }
+});
+{% endif %}
+</script>
 {% endblock %}

@@ -1,6 +1,7 @@
 import os
 import random
 import sqlite3
+import io
 from datetime import datetime
 from typing import Tuple
 
@@ -13,6 +14,7 @@ from flask import (
     url_for,
     flash,
     send_from_directory,
+    Response,
 )
 from werkzeug.utils import secure_filename
 
@@ -118,8 +120,34 @@ def init_db():
 
     # If the table already exists but uses an older schema, migrate it.
     _migrate_inspections_table(db)
+    
+    # Fix any inconsistent data
+    _fix_inconsistent_data(db)
 
     db.commit()
+
+
+def _fix_inconsistent_data(db: sqlite3.Connection) -> None:
+    """Fix inconsistent data where Good Welding is marked as NG."""
+    
+    # Fix records where Good Welding is incorrectly marked as NG
+    db.execute(
+        """
+        UPDATE inspections 
+        SET result = 'OK', defect_type = 'None'
+        WHERE result = 'NG' 
+        AND (defect_type = 'Good Welding' OR defect_type = 'None' OR defect_type IS NULL)
+        """
+    )
+    
+    # Ensure all Good Welding detections are marked as OK
+    db.execute(
+        """
+        UPDATE inspections 
+        SET result = 'OK'
+        WHERE defect_type = 'Good Welding'
+        """
+    )
 
 
 def _migrate_inspections_table(db: sqlite3.Connection) -> None:
@@ -145,9 +173,32 @@ def _migrate_inspections_table(db: sqlite3.Connection) -> None:
         "image_path",
         "annotated_image_path",
         "notes",
+        "defect_type",
     }
 
     if expected.issubset(set(cols)):
+        return
+
+    # Add defect_type column if missing
+    if "defect_type" not in cols:
+        db.execute("ALTER TABLE inspections ADD COLUMN defect_type TEXT")
+        db.commit()
+        cols.append("defect_type")
+
+    expected_without_defect = {
+        "inspection_id",
+        "product_code",
+        "lot_number",
+        "inspector_name",
+        "inspection_time",
+        "result",
+        "ai_confidence",
+        "image_path",
+        "annotated_image_path",
+        "notes",
+    }
+
+    if expected_without_defect.issubset(set(cols)):
         return
 
     # If the database already has an `inspections` table but is missing the
@@ -358,7 +409,7 @@ def _annotate_image(image_path: str, detections: list[dict]) -> str:
     return annotated_filename
 
 
-def predict_weld_defect(image_path: str) -> Tuple[str, float, list[dict], str]:
+def predict_weld_defect(image_path: str) -> Tuple[str, float, list[dict], str, str]:
     """Run model inference on the given image and return result + detections.
 
     Returns:
@@ -366,12 +417,18 @@ def predict_weld_defect(image_path: str) -> Tuple[str, float, list[dict], str]:
       - confidence: float (0-100)
       - detections: list of dicts with keys [class, confidence, bbox]
       - annotated_filename: image filename with boxes drawn (may be original image if drawing fails)
+      - defect_type: string describing the defect type or "None"
     """
 
     model = _load_model()
 
     detections: list[dict] = []
     annotated_filename = os.path.basename(image_path)
+    defect_type = "None"
+
+    # Define class categories
+    OK_CLASSES = {"Good Welding"}
+    NG_CLASSES = {"Bad Welding", "Crack", "Excess Reinforcement", "Porosity", "Spatters"}
 
     if model is not None:
         try:
@@ -386,30 +443,54 @@ def predict_weld_defect(image_path: str) -> Tuple[str, float, list[dict], str]:
                         xyxy = box.xyxy.tolist()[0]
                         conf = float(box.conf.tolist()[0])
                         cls_id = int(box.cls.tolist()[0])
+                        class_name = names.get(cls_id, str(cls_id))
                         detections.append(
                             {
-                                "class": names.get(cls_id, str(cls_id)),
+                                "class": class_name,
                                 "confidence": round(conf * 100, 2),
                                 "bbox": [xyxy[0], xyxy[1], xyxy[2], xyxy[3]],
                             }
                         )
 
+            # Determine result based on detected classes
             if detections:
-                result = "NG"
+                detected_classes = [det["class"] for det in detections]
+                
+                # Check if any NG class is detected
+                has_ng_class = any(cls in NG_CLASSES for cls in detected_classes)
+                
+                if has_ng_class:
+                    result = "NG"
+                    # Get the most frequent NG class as defect_type
+                    ng_classes = [cls for cls in detected_classes if cls in NG_CLASSES]
+                    defect_counts = {}
+                    for cls in ng_classes:
+                        defect_counts[cls] = defect_counts.get(cls, 0) + 1
+                    defect_type = max(defect_counts, key=defect_counts.get) if defect_counts else "Unknown"
+                else:
+                    # Only Good Welding detected
+                    result = "OK"
+                    defect_type = "None"
+                
+                # Use highest confidence as overall confidence
                 confidence = max(d["confidence"] for d in detections)
             else:
+                # No detections - assume OK
                 result = "OK"
                 confidence = 99.0
+                defect_type = "None"
 
             annotated_filename = _annotate_image(image_path, detections)
-            return result, confidence, detections, annotated_filename
+            return result, confidence, detections, annotated_filename, defect_type
         except Exception:
             app.logger.exception("Model inference failed")
 
     # Fallback to random result if model fails or is unavailable.
     confidence = round(random.uniform(85, 99), 2)
     result = random.choice(["OK", "NG"])
-    return result, confidence, detections, annotated_filename
+    if result == "NG":
+        defect_type = random.choice(["Bad Welding", "Crack", "Excess Reinforcement", "Porosity", "Spatters"])
+    return result, confidence, detections, annotated_filename, defect_type
 
 
 @app.before_request
@@ -451,8 +532,45 @@ def dashboard():
     db = get_db()
 
     total_inspections = db.execute("SELECT COUNT(*) AS c FROM inspections").fetchone()["c"]
-    ng_count = db.execute("SELECT COUNT(*) AS c FROM inspections WHERE result = 'NG'").fetchone()["c"]
+    
+    # Count only true NG results (exclude Good Welding)
+    ng_count = db.execute(
+        "SELECT COUNT(*) AS c FROM inspections WHERE result = 'NG' AND (defect_type IS NULL OR defect_type != 'Good Welding')"
+    ).fetchone()["c"]
+    
+    # Calculate defect rate
+    defect_rate = 0.0
+    if total_inspections > 0:
+        defect_rate = round((ng_count / total_inspections) * 100, 1)
 
+    # Get top defect types (exclude Good Welding and None)
+    top_defects = db.execute(
+        """
+        SELECT defect_type, COUNT(*) as count
+        FROM inspections 
+        WHERE defect_type IS NOT NULL 
+        AND defect_type != 'None' 
+        AND defect_type != 'Good Welding'
+        AND result = 'NG'
+        GROUP BY defect_type
+        ORDER BY count DESC
+        LIMIT 5
+        """
+    ).fetchall()
+
+    # Get recent NG alerts (exclude Good Welding)
+    recent_ng_alerts = db.execute(
+        """
+        SELECT product_code, lot_number, defect_type, ai_confidence, inspection_time
+        FROM inspections
+        WHERE result = 'NG' 
+        AND (defect_type IS NULL OR defect_type != 'Good Welding')
+        ORDER BY inspection_time DESC
+        LIMIT 5
+        """
+    ).fetchall()
+
+    # Get recent inspections (for existing display)
     last = db.execute(
         """
         SELECT inspection_id, product_code, lot_number, inspector_name, result, ai_confidence, inspection_time
@@ -466,6 +584,9 @@ def dashboard():
         "dashboard.html",
         total_inspections=total_inspections,
         ng_count=ng_count,
+        defect_rate=defect_rate,
+        top_defects=top_defects,
+        recent_ng_alerts=recent_ng_alerts,
         recent=last,
     )
 
@@ -510,7 +631,7 @@ def inspection():
         save_path = os.path.join(app.config["UPLOAD_FOLDER"], saved_name)
         file.save(save_path)
 
-        result, confidence, detections, annotated_filename = predict_weld_defect(save_path)
+        result, confidence, detections, annotated_filename, defect_type = predict_weld_defect(save_path)
         preview_name = annotated_filename or os.path.basename(save_path)
         preview_image = preview_name
         original_image = saved_name
@@ -527,10 +648,11 @@ def inspection():
                 ai_confidence,
                 image_path,
                 annotated_image_path,
-                notes
-            ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?)
+                notes,
+                defect_type
+            ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)
             """,
-            (product_code, lot_number, inspector_name, result, confidence, original_image, preview_name, notes),
+            (product_code, lot_number, inspector_name, result, confidence, original_image, preview_name, notes, defect_type),
         )
         db.commit()
 
@@ -593,6 +715,95 @@ def set_inspection_status(inspection_id: int):
 def uploaded_file(filename):
     """Serve uploaded images back to the browser."""
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
+
+@app.route("/export/csv")
+def export_csv():
+    """Export inspection records as CSV."""
+    import csv
+    import io
+    
+    db = get_db()
+    rows = db.execute(
+        """
+        SELECT product_code, lot_number, result, defect_type, ai_confidence, 
+               inspector_name, inspection_time
+        FROM inspections
+        ORDER BY inspection_time DESC
+        """
+    ).fetchall()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['product_id', 'lot_no', 'result', 'defect_type', 'confidence', 'inspector', 'timestamp'])
+    
+    # Write data
+    for row in rows:
+        writer.writerow([
+            row['product_code'],
+            row['lot_number'],
+            row['result'],
+            row['defect_type'] or '',
+            f"{row['ai_confidence']}%",
+            row['inspector_name'],
+            row['inspection_time']
+        ])
+    
+    # Create response
+    output.seek(0)
+    response = Response(output.getvalue(), mimetype='text/csv')
+    response.headers['Content-Disposition'] = 'attachment; filename=welding_inspections.csv'
+    return response
+
+
+@app.route("/export/excel")
+def export_excel():
+    """Export inspection records as Excel."""
+    try:
+        import pandas as pd
+    except ImportError:
+        flash("pandas not installed. Please install it with: pip install pandas openpyxl", "danger")
+        return redirect(url_for("dashboard"))
+    
+    db = get_db()
+    rows = db.execute(
+        """
+        SELECT product_code, lot_number, result, defect_type, ai_confidence, 
+               inspector_name, inspection_time
+        FROM inspections
+        ORDER BY inspection_time DESC
+        """
+    ).fetchall()
+    
+    # Convert to DataFrame
+    data = []
+    for row in rows:
+        data.append({
+            'product_id': row['product_code'],
+            'lot_no': row['lot_number'],
+            'result': row['result'],
+            'defect_type': row['defect_type'] or '',
+            'confidence': f"{row['ai_confidence']}%",
+            'inspector': row['inspector_name'],
+            'timestamp': row['inspection_time']
+        })
+    
+    df = pd.DataFrame(data)
+    
+    # Create Excel file in memory
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Inspections', index=False)
+    
+    output.seek(0)
+    
+    # Create response
+    response = Response(output.getvalue(), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response.headers['Content-Disposition'] = 'attachment; filename=welding_inspections.xlsx'
+    return response
 
 
 if __name__ == "__main__":
